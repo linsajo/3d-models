@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Portfolio | Interactive 3D Showcase</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    :root { --primary:#2563eb; --secondary:#3b82f6; --accent:#7e22ce; --light:#f8fafc; --dark:#1e293b; --gradient:linear-gradient(135deg,var(--primary),var(--accent)); --card-bg:rgba(30,41,59,.8); }
+    body { background: linear-gradient(135deg, #0f172a, #1e293b); color: var(--light); line-height: 1.6; overflow-x: hidden; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+    header { padding: 20px 0; position: fixed; width: 100%; top: 0; z-index: 1000; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.1); }
+    nav { display:flex; justify-content:space-between; align-items:center; }
+    .logo { font-size:1.8rem; font-weight:700; background:var(--gradient); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .nav-links { display:flex; gap:30px; }
+    .nav-links a { color:var(--light); text-decoration:none; font-weight:500; transition:color .3s; position:relative; }
+    .nav-links a:after { content:''; position:absolute; width:0; height:2px; bottom:-5px; left:0; background:var(--gradient); transition:width .3s; }
+    .nav-links a:hover { color:var(--secondary); }
+    .nav-links a:hover:after { width:100%; }
+
+    .hero { min-height:100vh; display:flex; align-items:center; padding-top:80px; position:relative; overflow:hidden; }
+    .hero-content { flex:1; max-width:600px; z-index:2; }
+    .hero h1 { font-size:3.5rem; margin-bottom:20px; background:var(--gradient); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .hero p { font-size:1.2rem; margin-bottom:30px; color:#cbd5e1; }
+    .btn { display:inline-block; padding:12px 30px; background:var(--gradient); color:white; text-decoration:none; border-radius:30px; font-weight:600; transition:transform .3s, box-shadow .3s; border:none; cursor:pointer; margin-right:10px; margin-bottom:10px; }
+    .btn:hover { transform:translateY(-3px); box-shadow:0 10px 20px rgba(0,0,0,.3); }
+    .btn-outline { background:transparent; border:2px solid var(--primary); color:var(--light); }
+    .canvas-container { position:absolute; top:0; right:0; width:50%; height:100%; z-index:1; }
+
+    .section-title { text-align:center; font-size:2.5rem; margin-bottom:60px; padding-top:40px; background:var(--gradient); -webkit-background-clip:text; background-clip:text; color:transparent; }
+
+    .projects { padding:100px 0; }
+    .project-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:30px; }
+    .project-card { background:var(--card-bg); border-radius:15px; overflow:hidden; transition:transform .3s, box-shadow .3s; position:relative; backdrop-filter: blur(10px); border:1px solid rgba(255,255,255,.1); }
+    .project-card:hover { transform:translateY(-10px); box-shadow:0 15px 30px rgba(0,0,0,.4); }
+    .project-img { height:200px; background:var(--gradient); display:flex; align-items:center; justify-content:center; font-size:3rem; position:relative; overflow:hidden; }
+    .project-content { padding:20px; }
+    .project-card h3 { font-size:1.5rem; margin-bottom:10px; }
+    .project-card p { color:#94a3b8; margin-bottom:15px; }
+    .project-card .btn { margin-top:4px; }
+
+    .skills { padding:100px 0; background: rgba(15,23,42,.5); }
+    .skills-container { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:30px; }
+    .skill-card { background:var(--card-bg); padding:25px; border-radius:15px; text-align:center; backdrop-filter: blur(10px); border:1px solid rgba(255,255,255,.1); transition:transform .3s; }
+    .skill-card:hover { transform:translateY(-5px); }
+    .skill-card i { font-size:2.5rem; margin-bottom:15px; background:var(--gradient); -webkit-background-clip:text; background-clip:text; color:transparent; }
+
+    /* One-by-one Showcase */
+    .showcase { padding:100px 0; text-align:center; }
+    .stage-wrap { display:flex; flex-direction:column; align-items:center; gap:16px; }
+
+    /* BIGGER STAGE */
+    .stage {
+      width: min(1000px, 92vw);
+      aspect-ratio: 16 / 9;
+      height: auto;
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(255,255,255,.1);
+      background:#0f172a;
+      cursor:pointer;
+      box-shadow:0 20px 60px rgba(0,0,0,.35);
+    }
+
+    .loader { border:5px solid #f3f3f3; border-top:5px solid var(--primary); border-radius:50%; width:50px; height:50px; animation: spin 1s linear infinite; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:10; }
+    @keyframes spin { 0%{transform:translate(-50%,-50%) rotate(0)} 100%{transform:translate(-50%,-50%) rotate(360deg)} }
+    .controls { display:flex; align-items:center; gap:12px; }
+    .ctr-btn { border:none; background:rgba(255,255,255,.08); color:var(--light); padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; transition: transform .2s, background .2s; }
+    .ctr-btn:hover { transform: translateY(-2px); background: rgba(255,255,255,.12); }
+    .dots { display:flex; gap:8px; }
+    .dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.25); }
+    .dot.active { background: var(--secondary); }
+    .model-title { font-weight:700; opacity:.9; }
+
+    /* Modal */
+    .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.9); z-index:2000; justify-content:center; align-items:center; }
+    .modal-content { width:80%; height:80%; position:relative; box-shadow:0 30px 80px rgba(0,0,0,.5); border-radius:12px; overflow:hidden; }
+    .close-modal { position:absolute; top:15px; right:15px; color:white; font-size:30px; cursor:pointer; z-index:2001; background:rgba(0,0,0,.5); width:40px; height:40px; border-radius:50%; display:flex; justify-content:center; align-items:center; }
+
+    footer { text-align:center; padding:60px 0; background: rgba(15, 23, 42, 0.8); border-top:1px solid rgba(255,255,255,.1); }
+    .social-links { display:flex; justify-content:center; gap:20px; margin-bottom:20px; }
+    .social-links a { color:var(--light); font-size:1.5rem; transition: transform .3s, color .3s; display:inline-block; }
+    .social-links a:hover { color:var(--secondary); transform: translateY(-5px); }
+
+    @media (max-width:768px){
+      .hero { flex-direction:column; text-align:center; padding-top:120px; }
+      .hero-content { max-width:100%; margin-bottom:40px; }
+      .canvas-container { position:relative; width:100%; height:300px; }
+      .nav-links { display:none; }
+      .hero h1 { font-size:2.5rem; }
+      .modal-content { width:95%; height:60%; }
+
+      .stage { width:95vw; aspect-ratio: 1 / 1; height:auto; max-width:480px; max-height:480px; }
+    }
+
+    .fade-in { opacity:0; transform:translateY(20px); transition:opacity .8s ease, transform .8s ease; }
+    .visible { opacity:1; transform:translateY(0); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <div class="logo">3D Portfolio</div>
+        <div class="nav-links">
+          <a href="#home">Home</a>
+          <a href="#projects">Projects</a>
+          <a href="#skills">Skills</a>
+          <a href="#showcase">3D Showcase</a>
+          <a href="#contact">Contact</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero" id="home">
+    <div class="container">
+      <div class="hero-content">
+        <h1>Transforming Ideas into Digital Reality</h1>
+        <p>I'm a creative developer specializing in web applications, interactive animations, and 3D experiences. I build engaging digital experiences that captivate users.</p>
+        <div class="hero-buttons">
+          <a href="#projects" class="btn">View My Work</a>
+                 </div>
+      </div>
+    </div>
+    <div class="canvas-container" id="hero-canvas"></div>
+  </section>
+
+  <section class="projects" id="projects">
+    <div class="container">
+      <h2 class="section-title">Featured Projects</h2>
+      <div class="project-grid">
+        <div class="project-card fade-in">
+          <div class="project-img"><i class="fas fa-cube"></i></div>
+          <div class="project-content">
+            <h3>3D Product Viewer</h3>
+            <p>An interactive 3D product visualization tool that allows customers to rotate, zoom, and customize products in real-time.</p>
+            <a href="#" class="btn" data-role="view-project" data-project="3d-product-viewer">View Project</a>
+          </div>
+        </div>
+        <div class="project-card fade-in">
+          <div class="project-img"><i class="fas fa-vr-cardboard"></i></div>
+          <div class="project-content">
+            <h3>VR Architecture Tour</h3>
+            <p>A virtual reality experience that lets users explore architectural designs before construction begins.</p>
+            <a href="#" class="btn" data-role="view-project" data-project="vr-architecture-tour">View Project</a>
+          </div>
+        </div>
+        <div class="project-card fade-in">
+          <div class="project-img"><i class="fas fa-gamepad"></i></div>
+          <div class="project-content">
+            <h3>WebGL Game</h3>
+            <p>A browser-based 3D game built with Three.js featuring realistic physics and immersive environments.</p>
+            <a href="#" class="btn" data-role="view-project" data-project="webgl-game">View Project</a>
+          </div>
+        </div>
+
+        <!-- Added projects per request -->
+        <div class="project-card fade-in">
+          <div class="project-img"><i class="fas fa-mobile"></i></div>
+          <div class="project-content">
+            <h3>LF APP</h3>
+            <p>A modern mobile-first application for the LF ecosystem.</p>
+            <a href="https://lfonlinebritishschool.com" class="btn" data-role="view-project" data-project="lf-app" data-allowed="true">View Project</a>
+          </div>
+        </div>
+
+        <div class="project-card fade-in">
+          <div class="project-img"><i class="fas fa-school"></i></div>
+          <div class="project-content">
+            <h3>LF Online </h3>
+            <p>Interactive online learning platform with courses and live sessions.</p>
+            <a href="https://lfonlineschool.com" class="btn" data-role="view-project" data-project="lf-online-school" data-allowed="true">View Project</a>
+          </div>
+        </div>
+
+        <div class="project-card fade-in">
+          <div class="project-img"><i class="fas fa-layer-group"></i></div>
+          <div class="project-content">
+            <h3>Hybrid</h3>
+            <p>A hybrid solution combining native and web technologies.</p>
+            <a href="#" class="btn" data-role="view-project" data-project="hybrid">View Project</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+ <section class="skills" id="skills">
+  <div class="container">
+    <h2 class="section-title">Technical Skills</h2>
+    <div class="skills-container">
+      <div class="skill-card fade-in"><i class="fas fa-code"></i><h3>Web Development</h3><p>HTML, CSS, JavaScript, React, Vue, Node.js, Three.js, WebGL</p></div>
+      <div class="skill-card fade-in"><i class="fas fa-gamepad"></i><h3>Game Development</h3><p>Unity, C#, Unreal Engine, AR/VR Development, Shader Programming</p></div>
+      <div class="skill-card fade-in"><i class="fas fa-cube"></i><h3>3D Modeling & Animation</h3><p>Blender, Maya, Substance Painter, Character Rigging, 3D Animation</p></div>
+      <div class="skill-card fade-in"><i class="fas fa-brain"></i><h3>AI & Machine Learning</h3><p>TensorFlow, PyTorch, Python, Neural Networks, Computer Vision</p></div>
+      <div class="skill-card fade-in"><i class="fas fa-mobile"></i><h3>Mobile Development</h3><p>React Native, Flutter, iOS, Android, Cross-platform Development</p></div>
+      <div class="skill-card fade-in"><i class="fas fa-server"></i><h3>Backend Development</h3><p>Node.js, Python, Django, REST APIs, Database Design, Cloud Services</p></div>
+    </div>
+  </div>
+</section>
+
+  <!-- One-by-one 3D Showcase -->
+  <section class="showcase" id="showcase">
+    <div class="container">
+      <h2 class="section-title">Interactive 3D Showcase</h2>
+      <p>Browse the models one at a time. Click the stage to open a large, interactive view.</p>
+
+      <div class="stage-wrap">
+        <div class="model-title" id="model-title">Loading…</div>
+        <div class="stage" id="showcase-stage">
+          <div class="loader" id="stage-loader"></div>
+          <!-- Canvas goes here -->
+        </div>
+        <div class="controls">
+          <button class="ctr-btn" id="prev-btn"><i class="fa fa-chevron-left"></i> Prev</button>
+          <div class="dots" id="dots"></div>
+          <button class="ctr-btn" id="next-btn">Next <i class="fa fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal for enlarged 3D view -->
+  <div class="modal" id="model-modal">
+    <div class="close-modal" id="close-modal">&times;</div>
+    <div class="modal-content" id="modal-content">
+      <div class="loader" id="modal-loader"></div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      initHeroScene();
+      initScrollAnimations();
+      setupModal();
+      initOneByOneShowcase();
+      gateProjectLinks(); // security gating for Featured Projects
+    });
+
+    // ---------------- HERO BACKGROUND ----------------
+    function initHeroScene(){
+      const container = document.getElementById('hero-canvas');
+      if(!container) return; // allow page without hero canvas
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, container.offsetWidth/container.offsetHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(container.offsetWidth, container.offsetHeight);
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      container.appendChild(renderer.domElement);
+
+      const particlesGeometry = new THREE.BufferGeometry();
+      const particlesCount = 3000;
+      const posArray = new Float32Array(particlesCount*3);
+      const colorArray = new Float32Array(particlesCount*3);
+      for(let i=0;i<particlesCount*3;i++){
+        posArray[i] = (Math.random()-0.5)*20;
+        colorArray[i] = i%3===0 ? Math.random()*0.5+0.5 : i%3===1 ? Math.random()*0.3+0.2 : Math.random()*0.8+0.2;
+      }
+      particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray,3));
+      particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray,3));
+      const particlesMaterial = new THREE.PointsMaterial({ size:0.05, vertexColors:true, transparent:true });
+      const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+      scene.add(particlesMesh);
+
+      const geometries = [ new THREE.IcosahedronGeometry(0.8,0), new THREE.TorusGeometry(0.6,0.2,16,100), new THREE.ConeGeometry(0.7,1.5,8), new THREE.SphereGeometry(0.7,32,32) ];
+      const materials = [ new THREE.MeshPhongMaterial({ color:0x3b82f6, emissive:0x072450, shininess:100, transparent:true, opacity:0.8 }), new THREE.MeshPhongMaterial({ color:0x7e22ce, emissive:0x29074a, shininess:100, transparent:true, opacity:0.8 }), new THREE.MeshPhongMaterial({ color:0x2563eb, emissive:0x072450, shininess:100, transparent:true, opacity:0.8 }) ];
+      const objects=[]; const numObjects=8;
+      for(let i=0;i<numObjects;i++){
+        const mesh = new THREE.Mesh(geometries[Math.floor(Math.random()*geometries.length)], materials[Math.floor(Math.random()*materials.length)]);
+        mesh.position.set((Math.random()-0.5)*10,(Math.random()-0.5)*5,(Math.random()-0.5)*5);
+        mesh.rotation.set(Math.random()*Math.PI,Math.random()*Math.PI,Math.random()*Math.PI);
+        const s = Math.random()*0.8+0.5; mesh.scale.set(s,s,s); scene.add(mesh);
+        objects.push({mesh, speed:{x:(Math.random()-0.5)*0.01,y:(Math.random()-0.5)*0.01,z:(Math.random()-0.5)*0.01}});
+      }
+      scene.add(new THREE.AmbientLight(0xffffff,0.5));
+      const dir = new THREE.DirectionalLight(0xffffff,1); dir.position.set(5,5,5); scene.add(dir);
+      const point = new THREE.PointLight(0x3b82f6,2,100); point.position.set(0,0,5); scene.add(point);
+      camera.position.z=8;
+      function animate(){
+        requestAnimationFrame(animate);
+        particlesMesh.rotation.y+=0.001;
+        objects.forEach(o=>{o.mesh.rotation.x+=o.speed.x; o.mesh.rotation.y+=o.speed.y; o.mesh.rotation.z+=o.speed.z; o.mesh.position.y+=Math.sin(Date.now()*0.001+o.mesh.position.x)*0.003;});
+        point.position.x=Math.sin(Date.now()*0.001)*5; point.position.y=Math.cos(Date.now()*0.001)*5;
+        renderer.render(scene,camera);
+      } animate();
+      window.addEventListener('resize',()=>{ camera.aspect=container.offsetWidth/container.offsetHeight; camera.updateProjectionMatrix(); renderer.setSize(container.offsetWidth, container.offsetHeight); });
+    }
+
+    // ---------------- Featured Projects Security Gating ----------------
+    function gateProjectLinks(){
+      const links = document.querySelectorAll('a.btn[data-role=\"view-project\"]');
+      links.forEach(link => {
+        link.addEventListener('click', (e) => {
+          const allowed = link.getAttribute('data-allowed') === 'true';
+          if (!allowed) {
+            e.preventDefault();
+            alert('Cannot open due to security issues.');
+          } // else proceed to href (lf-app.html / lf-online-school.html)
+        });
+      });
+    }
+
+    // ---------------- ONE-BY-ONE SHOWCASE ----------------
+    function initOneByOneShowcase(){
+      const stage = document.getElementById('showcase-stage');
+      const loader = document.getElementById('stage-loader');
+      const titleEl = document.getElementById('model-title');
+      const dotsEl = document.getElementById('dots');
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+
+      // Models list
+      const MODELS = [
+        { 
+          name: 'Low Poly Earth', 
+          url: 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/LeePerrySmith/LeePerrySmith.glb',
+          scale: 3.2,
+          rotationSpeed: 0.004
+        },
+        { 
+          name: 'Animated Robot', 
+          url: 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/RobotExpressive/RobotExpressive.glb',
+          scale: 1.2,
+          rotationSpeed: 0.002
+        },
+        {
+          name: 'Human Brain',
+          url: 'https://raw.githubusercontent.com/linsajo/3d-models/main/brain.glb',
+          scale: 2.6,
+          rotationSpeed: 0.003
+        },
+        {
+          name: 'Human Heart',
+          url: 'https://raw.githubusercontent.com/linsajo/3d-models/main/heart-2.glb',
+          scale: 2.8,
+          rotationSpeed: 0.003
+        },
+        {
+          name: 'Wyvern (Animated)',
+          url: 'https://raw.githubusercontent.com/linsajo/3d-models/main/wyvern_animated-2.glb',
+          scale: 3.0,
+          rotationSpeed: 0.002
+        },
+        {
+          name: 'Hare (Animated)',
+          url: 'https://raw.githubusercontent.com/linsajo/3d-models/main/hare_animated.glb',
+          scale: 2.8,
+          rotationSpeed: 0.002
+        },
+        {
+          name: 'Clown Fish (Animated)',
+          url: 'https://raw.githubusercontent.com/linsajo/3d-models/main/clown_fish_low_poly_animated.glb',
+          scale: 3.0,
+          rotationSpeed: 0.003
+        }
+      ];
+      let current = 0;
+
+      // Build dots
+      function renderDots(){
+        dotsEl.innerHTML = '';
+        MODELS.forEach((_,i)=>{
+          const d = document.createElement('div'); d.className = 'dot'+(i===current?' active':''); dotsEl.appendChild(d);
+        });
+      }
+
+      // THREE scene state for the stage
+      let scene, camera, renderer, dirLight, pointLight, mixer, clock, contentGroup, ground; let activeCanvas;
+      let animClips = []; let animIndex = 0; let animTimer = null;
+
+      function clearAnimTimer(){ if(animTimer){ clearInterval(animTimer); animTimer = null; } }
+
+      function disposeCurrent(){
+        clearAnimTimer();
+        if(renderer){ renderer.dispose(); }
+        if(activeCanvas && activeCanvas.parentNode){ activeCanvas.parentNode.removeChild(activeCanvas); }
+        scene = null; camera = null; renderer = null; dirLight = null; pointLight = null; contentGroup = null; ground = null; activeCanvas = null;
+        mixer = null; clock = null; animClips = []; animIndex = 0;
+      }
+
+      function fitAndCenter(model, scale = 1){
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const modelScale = scale / maxDim;
+        model.scale.multiplyScalar(modelScale);
+        // Recompute after scale
+        const box2 = new THREE.Box3().setFromObject(model);
+        const center2 = box2.getCenter(new THREE.Vector3());
+        model.position.set(-center2.x, -center2.y, -center2.z);
+        const size2 = box2.getSize(new THREE.Vector3());
+        return { bottomY: -size2.y / 2 };
+      }
+
+      function setupLightsAndGround(sceneRef, bottomY){
+        sceneRef.add(new THREE.AmbientLight(0xffffff,0.6));
+        dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(5, 8, 6);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(1024,1024);
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 50;
+        sceneRef.add(dirLight);
+
+        pointLight = new THREE.PointLight(0x3b82f6, 1.2, 100);
+        pointLight.position.set(0, 2, 6);
+        sceneRef.add(pointLight);
+
+        const planeGeo = new THREE.PlaneGeometry(20, 20);
+        const shadowMat = new THREE.ShadowMaterial({ opacity: 0.25 });
+        ground = new THREE.Mesh(planeGeo, shadowMat);
+        ground.rotation.x = -Math.PI/2;
+        ground.position.y = bottomY - 0.02;
+        ground.receiveShadow = true;
+        sceneRef.add(ground);
+      }
+
+      function cycleAnimations(){
+        if(!mixer || animClips.length < 2) return;
+        clearAnimTimer();
+        animTimer = setInterval(()=>{
+          const prev = animClips[animIndex];
+          animIndex = (animIndex + 1) % animClips.length;
+          const next = animClips[animIndex];
+          const prevAction = mixer.clipAction(prev);
+          const nextAction = mixer.clipAction(next);
+          nextAction.reset().play();
+          prevAction.crossFadeTo(nextAction, 0.5, false);
+        }, 6000);
+      }
+
+      function showModel(idx){
+        current = (idx + MODELS.length) % MODELS.length;
+        titleEl.textContent = MODELS[current].name;
+        renderDots();
+        loader.style.display = 'block';
+        disposeCurrent();
+
+        // Create new scene
+        scene = new THREE.Scene(); scene.background = new THREE.Color(0x0f172a);
+        camera = new THREE.PerspectiveCamera(70, stage.clientWidth/stage.clientHeight, 0.1, 100);
+        renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(stage.clientWidth, stage.clientHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.15;
+        activeCanvas = renderer.domElement; stage.appendChild(activeCanvas);
+
+        clock = new THREE.Clock();
+        contentGroup = new THREE.Group();
+        contentGroup.rotation.x = 0.08; // slight tilt for presentation
+        scene.add(contentGroup);
+        camera.position.set(0, 1.2, 5);
+
+        const loaderGLB = new THREE.GLTFLoader();
+        loaderGLB.load(MODELS[current].url, (gltf)=>{
+          const model = gltf.scene; 
+          // Shadows for meshes
+          model.traverse((o)=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; o.frustumCulled = true; } });
+          contentGroup.add(model);
+          const fit = fitAndCenter(model, MODELS[current].scale);
+          setupLightsAndGround(scene, fit.bottomY);
+
+          // Animations setup
+          animClips = (gltf.animations||[]).filter(Boolean);
+          if(animClips.length){
+            mixer = new THREE.AnimationMixer(model);
+            const action = mixer.clipAction(animClips[0]);
+            action.play();
+            cycleAnimations();
+          }
+
+          loader.style.display='none';
+        }, undefined, (err)=>{ 
+          console.error('Model load error', err); 
+          loader.style.display='none'; 
+        });
+
+        // gentle pointer parallax
+        let mx=0,my=0; 
+        stage.onmousemove = (e)=>{ 
+          const rect = stage.getBoundingClientRect();
+          const x = (e.clientX - rect.left) / rect.width;
+          const y = (e.clientY - rect.top) / rect.height;
+          mx = x*2-1; 
+          my = -(y*2-1); 
+        };
+        
+        function animate(){ 
+          requestAnimationFrame(animate); 
+          const dt = clock.getDelta();
+          if (mixer) mixer.update(dt);
+          // turntable + pointer influence
+          if(contentGroup){
+            contentGroup.rotation.y += MODELS[current].rotationSpeed; 
+            contentGroup.rotation.x = 0.08 + my*0.1; 
+            contentGroup.rotation.y += mx*0.002; 
+          }
+          if(pointLight){
+            const t = Date.now()*0.001;
+            pointLight.position.x = Math.sin(t)*4; 
+            pointLight.position.y = 1.5 + Math.cos(t*0.8)*0.8; 
+          }
+          renderer.render(scene,camera); 
+        } 
+        animate();
+
+        // Resize handling
+        const onResize = ()=>{ if(!camera||!renderer) return; camera.aspect = stage.clientWidth/stage.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(stage.clientWidth, stage.clientHeight); };
+        window.addEventListener('resize', onResize, { passive:true });
+      }
+
+      // Controls
+      prevBtn.addEventListener('click', ()=> showModel(current-1));
+      nextBtn.addEventListener('click', ()=> showModel(current+1));
+
+      // Click to open modal big view
+      stage.addEventListener('click', ()=> openModalWithModel(MODELS[current]));
+
+      renderDots();
+      showModel(0);
+
+      // NOTE: Removed autoplay to keep it strictly one-by-one
+      // (deleted: setInterval(()=>{ showModel(current+1); }, 9000))
+    }
+
+    // ---------------- MODAL ----------------
+    function setupModal(){
+      const modal = document.getElementById('model-modal');
+      const closeModal = document.getElementById('close-modal');
+      const modalContent = document.getElementById('modal-content');
+      closeModal.addEventListener('click', ()=>{ closeAndCleanup(); });
+      modal.addEventListener('click', (e)=>{ if(e.target===modal) closeAndCleanup(); });
+      function closeAndCleanup(){
+        modal.style.display='none';
+        // Remove canvases but keep the loader element
+        [...modalContent.children].forEach(ch=>{ if(!ch.classList.contains('loader')) modalContent.removeChild(ch); });
+      }
+    }
+
+    function openModalWithModel(modelData){
+      const modal = document.getElementById('model-modal');
+      const modalContent = document.getElementById('modal-content');
+      const modalLoader = document.getElementById('modal-loader');
+      modal.style.display = 'flex'; modalLoader.style.display='block';
+
+      // cleanup old canvases
+      [...modalContent.children].forEach(ch=>{ if(!ch.classList.contains('loader')) modalContent.removeChild(ch); });
+
+      const scene = new THREE.Scene(); scene.background = new THREE.Color(0x1e293b);
+      const camera = new THREE.PerspectiveCamera(70, modalContent.offsetWidth/modalContent.offsetHeight, 0.1, 200);
+      const renderer = new THREE.WebGLRenderer({ antialias:true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(modalContent.offsetWidth, modalContent.offsetHeight); modalContent.appendChild(renderer.domElement);
+      renderer.shadowMap.enabled = true;
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+
+      // Add orbit controls for better interaction
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.target.set(0, 0.8, 0);
+
+      scene.add(new THREE.AmbientLight(0xffffff,0.7));
+      const dir = new THREE.DirectionalLight(0xffffff,1.3); dir.position.set(6,10,6); dir.castShadow = true; dir.shadow.mapSize.set(2048,2048); scene.add(dir);
+      const point = new THREE.PointLight(0x6ea8fe,1.1,120); point.position.set(-4,3,6); scene.add(point);
+      camera.position.set(0, 1.5, 6);
+
+      // Ground (shadow catcher)
+      const planeGeo = new THREE.PlaneGeometry(40, 40);
+      const shadowMat = new THREE.ShadowMaterial({ opacity: 0.3 });
+      const ground = new THREE.Mesh(planeGeo, shadowMat);
+      ground.rotation.x = -Math.PI/2;
+      ground.position.y = -1;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      // Initialize clock for animations
+      const clock = new THREE.Clock();
+      let mixer = null; let animClips = []; let animIndex = 0; let timer = null;
+
+      function clearTimer(){ if(timer){ clearInterval(timer); timer=null; } }
+
+      const gltfLoader = new THREE.GLTFLoader();
+      gltfLoader.load(modelData.url, (gltf)=>{
+        const model = gltf.scene; 
+        model.traverse(o=>{ if(o.isMesh){ o.castShadow = true; o.receiveShadow = true; } });
+        scene.add(model);
+        // fit & center
+        const box = new THREE.Box3().setFromObject(model); 
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const maxDim = Math.max(size.x,size.y,size.z); 
+        const scale = modelData.scale/maxDim; 
+        model.scale.multiplyScalar(scale); 
+        const box2 = new THREE.Box3().setFromObject(model);
+        const center2 = box2.getCenter(new THREE.Vector3());
+        const size2 = box2.getSize(new THREE.Vector3());
+        model.position.set(-center2.x, -center2.y, -center2.z);
+        ground.position.y = -size2.y/2 - 0.02;
+
+        // Animations
+        animClips = (gltf.animations||[]).filter(Boolean);
+        if (animClips.length) {
+          mixer = new THREE.AnimationMixer(model);
+          const first = mixer.clipAction(animClips[0]);
+          first.play();
+          // cycle through all clips, smooth crossfade
+          timer = setInterval(()=>{
+            if(!mixer || animClips.length < 2) return;
+            const prev = animClips[animIndex];
+            animIndex = (animIndex + 1) % animClips.length;
+            const next = animClips[animIndex];
+            const a = mixer.clipAction(prev);
+            const b = mixer.clipAction(next);
+            b.reset().play();
+            a.crossFadeTo(b, 0.6, false);
+          }, 6500);
+        }
+        
+        modalLoader.style.display='none';
+      }, undefined, (err)=>{ 
+        console.error('An error happened loading the model:', err); 
+        modalLoader.style.display='none'; 
+      });
+
+      function animate(){ 
+        requestAnimationFrame(animate); 
+        const dt = clock.getDelta();
+        if (mixer) mixer.update(dt);
+        controls.update();
+        const t = Date.now()*0.001; 
+        point.position.x=Math.sin(t*0.8)*5; 
+        point.position.y=1.5+Math.cos(t*0.9)*1.0; 
+        renderer.render(scene,camera); 
+      } 
+      animate();
+
+      function onResize(){ 
+        camera.aspect = modalContent.offsetWidth/modalContent.offsetHeight; 
+        camera.updateProjectionMatrix(); 
+        renderer.setSize(modalContent.offsetWidth, modalContent.offsetHeight); 
+      }
+      window.addEventListener('resize', onResize, { passive:true });
+
+      // clean timer when modal is closed by navigating away (best-effort)
+      window.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ clearTimer(); } }, { once:true });
+    }
+
+    // ---------------- SCROLL ANIMS ----------------
+    function initScrollAnimations(){
+      const fadeElements = document.querySelectorAll('.fade-in');
+      const observer = new IntersectionObserver((entries)=>{ entries.forEach(entry=>{ if(entry.isIntersecting) entry.target.classList.add('visible'); }); },{threshold:0.1});
+      fadeElements.forEach(el=>observer.observe(el));
+    }
+  </script>
+</body>
+</html>
